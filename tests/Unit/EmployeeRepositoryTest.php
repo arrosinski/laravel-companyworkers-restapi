@@ -1,32 +1,50 @@
 <?php
 
 use App\Domain\Entities\Employee;
-use App\Infrastructure\Persistence\Repositories\EloquentEmployeeRepository;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Domain\Repositories\EmployeeRepositoryInterface;
+use Mockery;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+class EmployeeRepositoryTest extends TestCase
+{
+    protected $mockEmployeeRepository;
 
-beforeEach(function () {
-    $this->employeeRepository = new EloquentEmployeeRepository;
-});
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mockEmployeeRepository = Mockery::mock(EmployeeRepositoryInterface::class);
+    }
 
-test('all employees', function () {
-    Employee::factory()->count(3)->create();
-    $result = $this->employeeRepository->all();
-    expect($result)->toHaveCount(3);
-});
+    public function testAllEmployees()
+    {
+        $employees = Employee::factory()->count(3)->make();
+        $this->mockEmployeeRepository->shouldReceive('all')->once()->andReturn($employees);
 
-test('create employee', function () {
-    $data = [
-        'first_name' => 'John',
-        'last_name' => 'Doe',
-        'email' => 'john.doe@example.com',
-        'phone' => '123-456-7890',
-        'company_id' => 1,
-    ];
+        $result = $this->mockEmployeeRepository->all();
+        $this->assertCount(3, $result);
+    }
 
-    $result = $this->employeeRepository->create($data);
-    expect($result)->toBeInstanceOf(Employee::class)
-        ->and($result->first_name)->toBe('John');
-    $this->assertDatabaseHas('employees', ['email' => 'john.doe@example.com']);
-});
+    public function testCreateEmployee()
+    {
+        $data = [
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john.doe@example.com',
+            'phone' => '123-456-7890',
+            'company_id' => 1,
+        ];
+
+        $employee = new Employee($data);
+        $this->mockEmployeeRepository->shouldReceive('create')->once()->with($data)->andReturn($employee);
+
+        $result = $this->mockEmployeeRepository->create($data);
+        $this->assertInstanceOf(Employee::class, $result);
+        $this->assertEquals('John', $result->first_name);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+}

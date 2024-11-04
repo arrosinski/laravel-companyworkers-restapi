@@ -3,36 +3,51 @@
 use App\Application\Services\EmployeeService;
 use App\Domain\Entities\Employee;
 use App\Domain\Repositories\EmployeeRepositoryInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use Tests\TestCase;
 
-uses(RefreshDatabase::class);
+class EmployeeServiceTest extends TestCase
+{
+    protected $mockEmployeeRepository;
+    protected $employeeService;
 
-beforeEach(function () {
-    $this->mockEmployeeRepository = Mockery::mock(EmployeeRepositoryInterface::class);
-    $this->employeeService = new EmployeeService($this->mockEmployeeRepository);
-});
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mockEmployeeRepository = Mockery::mock(EmployeeRepositoryInterface::class);
+        $this->employeeService = new EmployeeService($this->mockEmployeeRepository);
+    }
 
-test('create employee through service', function () {
-    $data = [
-        'first_name' => 'Jane',
-        'last_name' => 'Doe',
-        'email' => 'jane.doe@example.com',
-        'phone' => '098-765-4321',
-        'company_id' => 1,
-    ];
+    public function testCreateEmployeeThroughService()
+    {
+        $data = [
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'email' => 'jane.doe@example.com',
+            'phone' => '098-765-4321',
+            'company_id' => 1,
+        ];
 
-    $this->mockEmployeeRepository->shouldReceive('create')->with($data)->andReturn(new Employee($data));
+        $employee = new Employee($data);
+        $this->mockEmployeeRepository->shouldReceive('create')->with($data)->andReturn($employee);
 
-    $result = $this->employeeService->createEmployee($data);
-    expect($result)->toBeInstanceOf(Employee::class)
-        ->and($result->first_name)->toBe('Jane');
-    $this->assertDatabaseHas('employees', ['email' => 'jane.doe@example.com']);
-});
+        $result = $this->employeeService->createEmployee($data);
+        $this->assertInstanceOf(Employee::class, $result);
+        $this->assertEquals('Jane', $result->first_name);
+    }
 
-test('get all employees through service', function () {
-    $employees = Employee::factory()->count(3)->make();
-    $this->mockEmployeeRepository->shouldReceive('all')->andReturn($employees);
+    public function testGetAllEmployeesThroughService()
+    {
+        $employees = Employee::factory()->count(3)->make();
+        $this->mockEmployeeRepository->shouldReceive('all')->andReturn($employees);
 
-    $result = $this->employeeService->getAllEmployees();
-    expect($result)->toHaveCount(3);
-});
+        $result = $this->employeeService->getAllEmployees();
+        $this->assertCount(3, $result);
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+}
