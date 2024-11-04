@@ -42,10 +42,10 @@ class CompanyController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'tax_identification_number' => 'required|string|max:255',
             'address' => 'required|string|max:255',
+            'tax_identification_number' => 'required|regex:/^\d{9}$/',
             'city' => 'required|string|max:255',
-            'postal_code' => 'required|string|max:255',
+            'postal_code' => 'required|regex:/^\d{5}$/',
         ]);
 
         return $this->companyService->updateCompany($id, $validated);

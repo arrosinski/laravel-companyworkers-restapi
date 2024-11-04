@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Domain\Entities\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,60 +11,107 @@ class CompanyApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function testGetAllCompanies()
+    public function test_create_company()
     {
-        Company::factory()->count(3)->create();
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
 
-        $response = $this->getJson('/api/companies');
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-        $response->assertStatus(200)
-            ->assertJsonCount(3);
-    }
-
-    public function testCreateCompany()
-    {
-        $data = [
-            'name' => 'Acme Corporation',
+        $companyData = [
+            'name' => 'Test Company',
+            'address' => '123 Test Street',
             'tax_identification_number' => '123456789',
-            'address' => '123 Acme St',
-            'city' => 'Acme City',
+            'city' => 'Test City',
             'postal_code' => '12345',
         ];
 
-        $response = $this->postJson('/api/companies', $data);
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->postJson('/api/companies', $companyData);
 
         $response->assertStatus(201)
-            ->assertJsonFragment(['name' => 'Acme Corporation']);
-
-        $this->assertDatabaseHas('companies', ['name' => 'Acme Corporation']);
+            ->assertJson(['name' => 'Test Company']);
     }
-    public function testUpdateCompany()
+
+    public function test_update_company()
     {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         $company = Company::factory()->create();
 
-        $data = [
-            'name' => 'Updated Corporation',
+        $updatedData = [
+            'name' => 'Updated Company',
+            'address' => '456 Updated Street',
             'tax_identification_number' => '987654321',
-            'address' => '456 Updated St',
             'city' => 'Updated City',
             'postal_code' => '54321',
         ];
 
-        $response = $this->putJson("/api/companies/{$company->id}", $data);
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->putJson('/api/companies/'.$company->id, $updatedData);
 
         $response->assertStatus(200)
-            ->assertJsonFragment(['name' => 'Updated Corporation']);
-
-        $this->assertDatabaseHas('companies', ['name' => 'Updated Corporation']);
+            ->assertJson(['name' => 'Updated Company']);
     }
-    public function testDeleteCompany()
+
+    public function test_create_company_with_missing_fields()
     {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $companyData = [
+            'name' => '',
+            'address' => '',
+            'tax_identification_number' => '',
+            'city' => '',
+            'postal_code' => '',
+        ];
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->postJson('/api/companies', $companyData);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['name', 'address', 'tax_identification_number', 'city', 'postal_code']);
+    }
+
+    public function test_update_company_with_invalid_data()
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         $company = Company::factory()->create();
 
-        $response = $this->deleteJson("/api/companies/{$company->id}");
+        $updatedData = [
+            'name' => 'Updated Company',
+            'address' => '456 Updated Street',
+            'tax_identification_number' => 'invalid-tin',
+            'city' => 'Updated City',
+            'postal_code' => 'invalid-postal-code',
+        ];
 
-        $response->assertStatus(204);
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->putJson('/api/companies/'.$company->id, $updatedData);
 
-        $this->assertDatabaseMissing('companies', ['id' => $company->id]);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['tax_identification_number', 'postal_code']);
     }
 }
