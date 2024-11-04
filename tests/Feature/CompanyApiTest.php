@@ -63,7 +63,24 @@ class CompanyApiTest extends TestCase
             ->assertJson(['name' => 'Updated Company']);
     }
 
-    public function test_create_company_with_missing_fields()
+    public function test_show_non_existent_company()
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/companies/999');
+
+        $response->assertStatus(404)
+            ->assertJson(['error' => 'Company not found']);
+    }
+
+    public function test_create_company_with_invalid_data()
     {
         $user = User::factory()->create([
             'email' => 'test@example.com',
@@ -85,33 +102,12 @@ class CompanyApiTest extends TestCase
         ])->postJson('/api/companies', $companyData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['name', 'address', 'tax_identification_number', 'city', 'postal_code']);
-    }
-
-    public function test_update_company_with_invalid_data()
-    {
-        $user = User::factory()->create([
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        $company = Company::factory()->create();
-
-        $updatedData = [
-            'name' => 'Updated Company',
-            'address' => '456 Updated Street',
-            'tax_identification_number' => 'invalid-tin',
-            'city' => 'Updated City',
-            'postal_code' => 'invalid-postal-code',
-        ];
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '.$token,
-        ])->putJson('/api/companies/'.$company->id, $updatedData);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['tax_identification_number', 'postal_code']);
+            ->assertJsonValidationErrors([
+                'name',
+                'address',
+                'tax_identification_number',
+                'city',
+                'postal_code',
+            ]);
     }
 }

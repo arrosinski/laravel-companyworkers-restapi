@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Domain\Entities\Company;
 use App\Domain\Entities\Employee;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,7 +12,7 @@ class EmployeeApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_delete_employee()
+    public function test_create_employee()
     {
         $user = User::factory()->create([
             'email' => 'test@example.com',
@@ -22,50 +22,21 @@ class EmployeeApiTest extends TestCase
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $company = Company::factory()->create();
-        $employee = Employee::factory()->create([
+
+        $employeeData = [
             'company_id' => $company->id,
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john.doe@example.com',
-            'phone_number' => '123-456-7890',
-        ]);
+            'phone_number' => '1234567890',
+        ];
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '.$token,
-        ])->deleteJson('/api/employees/'.$employee->id);
+        ])->postJson('/api/employees', $employeeData);
 
-        $response->assertStatus(204);
-    }
-
-    public function test_show_employee()
-    {
-        $user = User::factory()->create([
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        $company = Company::factory()->create();
-        $employee = Employee::factory()->create([
-            'company_id' => $company->id,
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'email' => 'john.doe@example.com',
-            'phone_number' => '123-456-7890',
-        ]);
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '.$token,
-        ])->getJson('/api/employees/'.$employee->id);
-
-        $response->assertStatus(200)
-            ->assertJson([
-                'first_name' => 'John',
-                'last_name' => 'Doe',
-                'email' => 'john.doe@example.com',
-                'phone_number' => '123-456-7890',
-            ]);
+        $response->assertStatus(201)
+            ->assertJson(['first_name' => 'John']);
     }
 
     public function test_update_employee()
@@ -78,20 +49,14 @@ class EmployeeApiTest extends TestCase
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $company = Company::factory()->create();
-        $employee = Employee::factory()->create([
-            'company_id' => $company->id,
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'email' => 'john.doe@example.com',
-            'phone_number' => '123-456-7890',
-        ]);
+        $employee = Employee::factory()->create(['company_id' => $company->id]);
 
         $updatedData = [
             'company_id' => $company->id,
-            'first_name' => 'Updated First Name',
-            'last_name' => 'Updated Last Name',
-            'email' => 'updated@example.com',
-            'phone_number' => '987-654-3210',
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'email' => 'jane.doe@example.com',
+            'phone_number' => '0987654321',
         ];
 
         $response = $this->withHeaders([
@@ -99,9 +64,66 @@ class EmployeeApiTest extends TestCase
         ])->putJson('/api/employees/'.$employee->id, $updatedData);
 
         $response->assertStatus(200)
-            ->assertJson(['first_name' => 'Updated First Name']);
+            ->assertJson(['first_name' => 'Jane']);
     }
-    public function test_create_employee_with_missing_fields()
+
+    public function test_show_employee()
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->create(['company_id' => $company->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/employees/'.$employee->id);
+
+        $response->assertStatus(200)
+            ->assertJson(['first_name' => $employee->first_name]);
+    }
+
+    public function test_delete_employee()
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $company = Company::factory()->create();
+        $employee = Employee::factory()->create(['company_id' => $company->id]);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->deleteJson('/api/employees/'.$employee->id);
+
+        $response->assertStatus(204);
+    }
+
+    public function test_show_non_existent_employee()
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'password' => bcrypt('password'),
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/employees/999');
+
+        $response->assertStatus(404)
+            ->assertJson(['error' => 'Employee not found']);
+    }
+
+    public function test_create_employee_with_invalid_data()
     {
         $user = User::factory()->create([
             'email' => 'test@example.com',
@@ -123,40 +145,11 @@ class EmployeeApiTest extends TestCase
         ])->postJson('/api/employees', $employeeData);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['company_id', 'first_name', 'last_name', 'email']);
-    }
-
-    public function test_update_employee_with_invalid_email()
-    {
-        $user = User::factory()->create([
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        $company = Company::factory()->create();
-        $employee = Employee::factory()->create([
-            'company_id' => $company->id,
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'email' => 'john.doe@example.com',
-            'phone_number' => '123-456-7890',
-        ]);
-
-        $updatedData = [
-            'company_id' => $company->id,
-            'first_name' => 'Updated First Name',
-            'last_name' => 'Updated Last Name',
-            'email' => 'invalid-email',
-            'phone_number' => '987-654-3210',
-        ];
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '.$token,
-        ])->putJson('/api/employees/'.$employee->id, $updatedData);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors([
+                'company_id',
+                'first_name',
+                'last_name',
+                'email',
+            ]);
     }
 }

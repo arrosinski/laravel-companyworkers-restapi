@@ -1,9 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
 use App\Application\Services\CompanyService;
+use App\Domain\Exceptions\CompanyNotFoundException;
 use Illuminate\Http\Request;
 
 class CompanyController extends Controller
@@ -35,7 +37,13 @@ class CompanyController extends Controller
 
     public function show($id)
     {
-        return $this->companyService->getCompanyById($id);
+        $company = $this->companyService->getCompanyById($id);
+
+        if (! $company) {
+            throw new CompanyNotFoundException;
+        }
+
+        return $company;
     }
 
     public function update(Request $request, $id)
@@ -53,7 +61,14 @@ class CompanyController extends Controller
 
     public function destroy($id)
     {
+        $company = $this->companyService->getCompanyById($id);
+
+        if (! $company) {
+            throw new CompanyNotFoundException;
+        }
+
         $this->companyService->deleteCompany($id);
+
         return response()->noContent();
     }
 }

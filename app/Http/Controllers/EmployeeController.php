@@ -1,9 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
 use App\Application\Services\EmployeeService;
+use App\Domain\Exceptions\EmployeeNotFoundException;
 use Illuminate\Http\Request;
 
 class EmployeeController extends Controller
@@ -35,7 +37,13 @@ class EmployeeController extends Controller
 
     public function show($id)
     {
-        return $this->employeeService->getEmployeeById($id);
+        $employee = $this->employeeService->getEmployeeById($id);
+
+        if (! $employee) {
+            throw new EmployeeNotFoundException;
+        }
+
+        return $employee;
     }
 
     public function update(Request $request, $id)
@@ -53,7 +61,14 @@ class EmployeeController extends Controller
 
     public function destroy($id)
     {
+        $employee = $this->employeeService->getEmployeeById($id);
+
+        if (! $employee) {
+            throw new EmployeeNotFoundException;
+        }
+
         $this->employeeService->deleteEmployee($id);
+
         return response()->noContent();
     }
 }
