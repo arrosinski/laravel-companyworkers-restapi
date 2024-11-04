@@ -16,7 +16,7 @@ class EmployeeFactory extends Factory
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
-            'phone' => fake()->phoneNumber(),
+            'phone_number' => fake()->phoneNumber(),
             'company_id' => fake()->numberBetween(1, 100),
         ];
     }
